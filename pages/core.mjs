@@ -8,7 +8,7 @@ export function isAnnouncement(row) {
 function relevant(row) {
   if(!isAnnouncement(row))return true;
   const title=(row.job||row).announcement_title||"";
-  return /教师|学校|教育/.test(title)&&/招聘|选聘|招录/.test(title)&&!/拟录用|拟聘|公示|成绩|体检|资格复审|签约|测试|考试|取消|核减|递补|考察/.test(title);
+  return /教师|学校|教育/.test(title)&&/招聘|选聘|招录/.test(title)&&!/拟录用|拟聘|公示|成绩|体检|资格复审|(?:考试|测试)(?:公告|通知|安排|时间)|取消|核减|递补|考察/.test(title);
 }
 export function project(data, now=new Date()) {
   const history=new Map((data.history||[]).filter(relevant).map(row=>[row.id,{...row}])), active=[];
