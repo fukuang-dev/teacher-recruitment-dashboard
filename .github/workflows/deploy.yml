@@ -1,0 +1,56 @@
+# Installed only in the separate PUBLIC display repository as .github/workflows/deploy.yml.
+name: Deploy official recruitment Pages
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  repository_dispatch:
+    types: [snapshot-updated]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: recruitment-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Build from official public data mirror
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir _site
+          cp pages/index.html pages/app.js pages/core.mjs pages/clock.mjs pages/style.css _site/
+          gh release download public-data --repo "$GITHUB_REPOSITORY" --pattern data.json --dir _site
+          python - <<'PYTHON'
+          import json
+          from pathlib import Path
+          path=Path('_site/data.json')
+          if path.stat().st_size>8*1024*1024: raise ValueError('Public data exceeds 8 MiB')
+          data=json.loads(path.read_text())
+          if set(data)!={'schema_version','generated_at','active','history','sources','run'} or data['schema_version']!=1:
+              raise ValueError('Invalid public data format')
+          PYTHON
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+          retention-days: 1
+      - name: Deploy public Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
